@@ -1,0 +1,16 @@
+# Changelog
+
+## 1.0.0
+
+- Initial release: Selective Disclosure for JWTs per RFC 9901.
+- `SdJwtIssuer` — issue SD-JWTs with `Sd::hide()` markers for object properties, array
+  elements, and recursive Disclosures; `Sd::decoy()` for decoy digests; sha-256/384/512
+  `_sd_alg`.
+- `Presentation` — Holder-side selection by JSON Pointer with automatic inclusion of parent
+  Disclosures, optional Key Binding JWT.
+- `SdJwtVerifier` — the full Section 7 verification algorithm with explicit policy (allowed
+  algorithms, hash algorithms, clock, leeway) and Key Binding validation per Section 7.3.
+- Signing via `JwsSigner` (ES256/ES384/ES512, EdDSA, RS256) backed by k2gl/dsse;
+  verification accepts any k2gl/dsse `Verifier`.
+- Test vectors: the worked examples of RFC 9901 Sections 4.2 and 5 (issuance, presentation
+  with Key Binding, Appendix A.5 key), plus a rejection matrix for the MUST-level rules.

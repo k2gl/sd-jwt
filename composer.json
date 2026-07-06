@@ -1,0 +1,64 @@
+{
+  "name": "k2gl/sd-jwt",
+  "description": "Selective Disclosure for JWTs (SD-JWT, RFC 9901) in pure PHP: issue, present, verify.",
+  "homepage": "https://github.com/k2gl/sd-jwt",
+  "type": "library",
+  "license": "MIT",
+  "keywords": [
+    "sd-jwt",
+    "selective-disclosure",
+    "rfc9901",
+    "jwt",
+    "jws",
+    "key-binding",
+    "verifiable-credentials",
+    "eudi",
+    "openid4vc",
+    "digital-identity"
+  ],
+  "authors": [
+    {
+      "name": "Nick Harin",
+      "email": "l0gic@ya.ru"
+    }
+  ],
+  "support": {
+    "issues": "https://github.com/k2gl/sd-jwt/issues",
+    "source": "https://github.com/k2gl/sd-jwt"
+  },
+  "require": {
+    "php": ">=8.1",
+    "k2gl/dsse": "^1.3"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^10|^11|^12",
+    "phpstan/phpstan": "^2.1",
+    "laravel/pint": "~1.20.0"
+  },
+  "suggest": {
+    "ext-sodium": "Required to sign and verify EdDSA (Ed25519) JWTs.",
+    "ext-openssl": "Required to sign and verify ES256/ES384/ES512 and RS256/RS384/RS512 JWTs."
+  },
+  "autoload": {
+    "psr-4": {
+      "K2gl\\SdJwt\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "K2gl\\SdJwt\\Tests\\": "tests/"
+    }
+  },
+  "minimum-stability": "stable",
+  "scripts": {
+    "test": "phpunit",
+    "phpstan": "phpstan analyse",
+    "cs": "pint --test",
+    "cs-fix": "pint",
+    "check": [
+      "@test",
+      "@phpstan",
+      "@cs"
+    ]
+  }
+}
