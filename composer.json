@@ -1,6 +1,6 @@
 {
   "name": "k2gl/sd-jwt",
-  "description": "Selective Disclosure for JWTs (SD-JWT, RFC 9901) in pure PHP: issue, present, verify.",
+  "description": "Selective Disclosure for JWTs (SD-JWT, RFC 9901) in pure PHP: issue, present, verify",
   "homepage": "https://github.com/k2gl/sd-jwt",
   "type": "library",
   "license": "MIT",
