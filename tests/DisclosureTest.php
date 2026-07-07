@@ -12,29 +12,47 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use stdClass;
 
+use function K2gl\PHPUnitFluentAssertions\fact;
+
 #[CoversClass(Disclosure::class)]
 final class DisclosureTest extends SdJwtTestCase
 {
     /** RFC 9901 Section 4.2.1: the family_name example Disclosure. */
     private const FAMILY_NAME = 'WyJfMjZiYzRMVC1hYzZxMktJNmNCVzVlcyIsICJmYW1pbHlfbmFtZSIsICJNw7ZiaXVzIl0';
 
+    /** RFC 9901 Section 4.2.1: the family_name example Disclosure. */
     public function testParsesTheRfcPropertyDisclosure(): void
     {
+        // act
         $disclosure = Disclosure::fromEncoded(self::FAMILY_NAME);
 
-        self::assertSame('_26bc4LT-ac6q2KI6cBW5es', $disclosure->salt);
-        self::assertSame('family_name', $disclosure->claimName);
-        self::assertSame('Möbius', $disclosure->value);
-        self::assertFalse($disclosure->isArrayElement());
+        // assert
+        fact($disclosure->salt)->is('_26bc4LT-ac6q2KI6cBW5es');
+        fact($disclosure->claimName)->is('family_name');
+        fact($disclosure->value)->is('Möbius');
+        fact($disclosure->isArrayElement())->false();
     }
 
     /** RFC 9901 Section 4.2.3: digest over the encoded form. */
     public function testComputesTheRfcDigest(): void
     {
-        self::assertSame(
-            'X9yH0Ajrdm1Oij4tWso9UzzKJvPoDxwmuEcO3XAdRC0',
-            Disclosure::fromEncoded(self::FAMILY_NAME)->digest(),
-        );
+        // act + assert
+        fact(Disclosure::fromEncoded(self::FAMILY_NAME)->digest())
+            ->is('X9yH0Ajrdm1Oij4tWso9UzzKJvPoDxwmuEcO3XAdRC0');
+    }
+
+    /** RFC 9901 Sections 4.2.2 and 4.2.4.2: the nationalities array element. */
+    public function testParsesTheRfcArrayElementDisclosure(): void
+    {
+        // act
+        $disclosure = Disclosure::fromEncoded('WyJsa2x4RjVqTVlsR1RQVW92TU5JdkNBIiwgIkZSIl0');
+
+        // assert
+        fact($disclosure->salt)->is('lklxF5jMYlGTPUovMNIvCA');
+        fact($disclosure->claimName)->null();
+        fact($disclosure->value)->is('FR');
+        fact($disclosure->isArrayElement())->true();
+        fact($disclosure->digest())->is('w0I8EKcdCtUPkGCNUrfwVp2xEgNjtoIDlOxc9-PlOhs');
     }
 
     /**
@@ -44,12 +62,61 @@ final class DisclosureTest extends SdJwtTestCase
     #[DataProvider('encodingVariants')]
     public function testEncodingVariantsKeepTheirOwnDigest(string $encoded): void
     {
+        // act
         $disclosure = Disclosure::fromEncoded($encoded);
 
-        self::assertSame('family_name', $disclosure->claimName);
-        self::assertSame('Möbius', $disclosure->value);
-        self::assertNotSame('X9yH0Ajrdm1Oij4tWso9UzzKJvPoDxwmuEcO3XAdRC0', $disclosure->digest());
-        self::assertSame($encoded, $disclosure->encoded);
+        // assert: the value decodes the same
+        fact($disclosure->claimName)->is('family_name');
+        fact($disclosure->value)->is('Möbius');
+
+        // assert: but the encoded bytes — and thus the digest — differ from the canonical one
+        fact($disclosure->digest())->not('X9yH0Ajrdm1Oij4tWso9UzzKJvPoDxwmuEcO3XAdRC0');
+        fact($disclosure->encoded)->is($encoded);
+    }
+
+    public function testCreatedPropertyDisclosureRoundTrips(): void
+    {
+        // act
+        $created = Disclosure::forProperty(salt: 's-1', claimName: 'email', value: 'a@example.com');
+        $parsed = Disclosure::fromEncoded($created->encoded);
+
+        // assert
+        fact($parsed->claimName)->is('email');
+        fact($parsed->value)->is('a@example.com');
+        fact($parsed->digest())->is($created->digest());
+    }
+
+    public function testCreatedArrayElementNormalizesObjects(): void
+    {
+        // act
+        $created = Disclosure::forArrayElement(salt: 's-1', value: ['country' => 'US']);
+
+        // assert
+        fact($created->value)->instanceOf(stdClass::class);
+        fact($created->value->country)->is('US');
+    }
+
+    #[DataProvider('reservedNames')]
+    public function testRejectsReservedClaimNames(string $name): void
+    {
+        // act + assert
+        fact(static fn () => Disclosure::forProperty(salt: 's-1', claimName: $name, value: 1))
+            ->throws(InvalidSdJwtException::class);
+    }
+
+    #[DataProvider('malformed')]
+    public function testRejectsMalformedDisclosures(string $json): void
+    {
+        // act + assert
+        fact(static fn () => Disclosure::fromEncoded(Base64Url::encode($json)))
+            ->throws(InvalidSdJwtException::class);
+    }
+
+    public function testRejectsInvalidBase64Url(): void
+    {
+        // act + assert
+        fact(static fn () => Disclosure::fromEncoded('not+base64url/'))
+            ->throws(InvalidSdJwtException::class);
     }
 
     /**
@@ -64,44 +131,6 @@ final class DisclosureTest extends SdJwtTestCase
         yield 'newlines' => ['WwoiXzI2YmM0TFQtYWM2cTJLSTZjQlc1ZXMiLAoiZmFtaWx5X25hbWUiLAoiTcO2Yml1cyIKXQ'];
     }
 
-    /** RFC 9901 Sections 4.2.2 and 4.2.4.2: the nationalities array element. */
-    public function testParsesTheRfcArrayElementDisclosure(): void
-    {
-        $disclosure = Disclosure::fromEncoded('WyJsa2x4RjVqTVlsR1RQVW92TU5JdkNBIiwgIkZSIl0');
-
-        self::assertSame('lklxF5jMYlGTPUovMNIvCA', $disclosure->salt);
-        self::assertNull($disclosure->claimName);
-        self::assertSame('FR', $disclosure->value);
-        self::assertTrue($disclosure->isArrayElement());
-        self::assertSame('w0I8EKcdCtUPkGCNUrfwVp2xEgNjtoIDlOxc9-PlOhs', $disclosure->digest());
-    }
-
-    public function testCreatedPropertyDisclosureRoundTrips(): void
-    {
-        $created = Disclosure::forProperty(salt: 's-1', claimName: 'email', value: 'a@example.com');
-        $parsed = Disclosure::fromEncoded($created->encoded);
-
-        self::assertSame('email', $parsed->claimName);
-        self::assertSame('a@example.com', $parsed->value);
-        self::assertSame($created->digest(), $parsed->digest());
-    }
-
-    public function testCreatedArrayElementNormalizesObjects(): void
-    {
-        $created = Disclosure::forArrayElement(salt: 's-1', value: ['country' => 'US']);
-
-        self::assertInstanceOf(stdClass::class, $created->value);
-        self::assertSame('US', $created->value->country);
-    }
-
-    #[DataProvider('reservedNames')]
-    public function testRejectsReservedClaimNames(string $name): void
-    {
-        $this->expectException(InvalidSdJwtException::class);
-
-        Disclosure::forProperty(salt: 's-1', claimName: $name, value: 1);
-    }
-
     /**
      * @return iterable<string, array{string}>
      */
@@ -110,14 +139,6 @@ final class DisclosureTest extends SdJwtTestCase
         yield 'sd' => ['_sd'];
 
         yield 'ellipsis' => ['...'];
-    }
-
-    #[DataProvider('malformed')]
-    public function testRejectsMalformedDisclosures(string $json): void
-    {
-        $this->expectException(InvalidSdJwtException::class);
-
-        Disclosure::fromEncoded(Base64Url::encode($json));
     }
 
     /**
@@ -136,12 +157,5 @@ final class DisclosureTest extends SdJwtTestCase
         yield 'non-string claim name' => ['["salt",2,"value"]'];
 
         yield 'not JSON' => ['nope'];
-    }
-
-    public function testRejectsInvalidBase64Url(): void
-    {
-        $this->expectException(InvalidSdJwtException::class);
-
-        Disclosure::fromEncoded('not+base64url/');
     }
 }

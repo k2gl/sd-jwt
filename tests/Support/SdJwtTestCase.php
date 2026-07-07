@@ -11,12 +11,14 @@ use K2gl\SdJwt\Internal\Base64Url;
 use K2gl\SdJwt\Jws\JwsSigner;
 use PHPUnit\Framework\TestCase;
 
+use function K2gl\PHPUnitFluentAssertions\fact;
+
 abstract class SdJwtTestCase extends TestCase
 {
     protected static function fixture(string $relativePath): string
     {
         $contents = file_get_contents(__DIR__ . '/../fixtures/' . $relativePath);
-        self::assertNotFalse($contents);
+        fact($contents)->notFalse();
 
         return trim($contents);
     }
