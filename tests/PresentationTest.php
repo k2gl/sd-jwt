@@ -45,7 +45,7 @@ final class PresentationTest extends SdJwtTestCase
         $presentation = Presentation::of(self::fixture('rfc9901/issuance-sd-jwt.txt'));
 
         // assert
-        fact($presentation->toSdJwt()->disclosures)->is([]);
+        fact($presentation->toSdJwt()->disclosures)->isEmptyArray();
     }
 
     public function testDiscloseAllReleasesEverything(): void

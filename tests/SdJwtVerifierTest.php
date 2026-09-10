@@ -36,7 +36,7 @@ final class SdJwtVerifierTest extends SdJwtTestCase
         $claims = $verifier->verify($jwt . '~', self::issuerKey())->claims();
 
         // assert
-        fact(array_diff_key($claims, ['exp' => true]))->is([]);
+        fact($claims)->count(1)->arrayHasKey('exp');
     }
 
     public function testVerifyRejectsAnSdJwtKb(): void
