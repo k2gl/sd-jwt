@@ -54,7 +54,7 @@ final class SdJwtTest extends SdJwtTestCase
         $sdJwt = SdJwt::parse($jwt . '~');
 
         // assert
-        fact($sdJwt->disclosures)->is([]);
+        fact($sdJwt->disclosures)->isEmptyArray();
         fact($sdJwt->hasKeyBinding())->false();
     }
 

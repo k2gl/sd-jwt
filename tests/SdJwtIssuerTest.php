@@ -131,7 +131,7 @@ final class SdJwtIssuerTest extends SdJwtTestCase
         $payload = $sdJwt->payload();
 
         // assert
-        fact($sdJwt->disclosures)->is([]);
+        fact($sdJwt->disclosures)->isEmptyArray();
         fact($payload)->notHasProperty('_sd');
         fact($payload)->notHasProperty('_sd_alg');
     }

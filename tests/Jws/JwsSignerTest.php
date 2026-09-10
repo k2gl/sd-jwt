@@ -25,8 +25,8 @@ final class JwsSignerTest extends SdJwtTestCase
         [$h, $p, $s] = explode('.', $jwt);
 
         // assert
-        fact(json_decode(Base64Url::decode($h), true))->is(['alg' => 'ES256', 'typ' => 'example+sd-jwt']);
-        fact(json_decode(Base64Url::decode($p), true))->is(['sub' => 'user_42']);
+        fact(Base64Url::decode($h))->matchesJson(['alg' => 'ES256', 'typ' => 'example+sd-jwt']);
+        fact(Base64Url::decode($p))->matchesJson(['sub' => 'user_42']);
         fact(self::issuerKey()->verify($h . '.' . $p, Base64Url::decode($s)))->true();
     }
 
@@ -53,7 +53,7 @@ final class JwsSignerTest extends SdJwtTestCase
         [$h] = explode('.', $jwt);
 
         // assert
-        fact(json_decode(Base64Url::decode($h), true))->is(['alg' => 'CUSTOM']);
+        fact(Base64Url::decode($h))->matchesJson(['alg' => 'CUSTOM']);
     }
 
     public function testKeyIdPropagatesToTheHeader(): void
@@ -68,7 +68,7 @@ final class JwsSignerTest extends SdJwtTestCase
         [$h] = explode('.', $signer->sign(payload: []));
 
         // assert
-        fact(json_decode(Base64Url::decode($h), true))->is(['alg' => 'ES256', 'kid' => 'key-1']);
+        fact(Base64Url::decode($h))->matchesJson(['alg' => 'ES256', 'kid' => 'key-1']);
     }
 
     public function testStdClassPayloadIsSupported(): void
