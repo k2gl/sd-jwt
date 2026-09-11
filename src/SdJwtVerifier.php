@@ -67,7 +67,7 @@ final class SdJwtVerifier
             throw new InvalidSdJwtException('Expected an SD-JWT, got an SD-JWT+KB.');
         }
 
-        return new VerifiedSdJwt($this->verifySdJwt($sdJwt, $issuerKey)->payload, null);
+        return self::verified($this->verifySdJwt($sdJwt, $issuerKey), null);
     }
 
     /**
@@ -83,7 +83,7 @@ final class SdJwtVerifier
         $presentation = self::parsed($presentation);
 
         if (! $keyBinding->required) {
-            return new VerifiedSdJwt($this->verifySdJwt($presentation->withoutKeyBinding(), $issuerKey)->payload, null);
+            return self::verified($this->verifySdJwt($presentation->withoutKeyBinding(), $issuerKey), null);
         }
 
         if (! $presentation->hasKeyBinding()) {
@@ -99,7 +99,16 @@ final class SdJwtVerifier
             policy: $keyBinding,
         );
 
-        return new VerifiedSdJwt($processed->payload, $keyBindingPayload);
+        return self::verified($processed, $keyBindingPayload);
+    }
+
+    private static function verified(ProcessedSdJwt $processed, ?stdClass $keyBindingPayload): VerifiedSdJwt
+    {
+        return new VerifiedSdJwt(
+            payload: $processed->payload,
+            keyBindingPayload: $keyBindingPayload,
+            disclosedPaths: array_keys($processed->disclosureByPath),
+        );
     }
 
     /** RFC 9901 Section 7.1: signature, `_sd_alg`, Disclosures, time claims. */

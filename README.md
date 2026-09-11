@@ -115,17 +115,38 @@ Use `KeyBinding::notRequired()` for presentations without Holder binding, and
 `$verifier->verify($sdJwt, $issuerKey)` on the Holder side after receiving an SD-JWT from
 an Issuer.
 
+### JWS JSON serialization
+
+RFC 9901 Section 8 defines an alternative to the `~`-separated compact form: a JWS JSON
+object (RFC 7515 Section 7.2) whose unprotected header carries the Disclosures and, for a
+presentation, the Key Binding JWT. Everything above accepts it wherever a compact string is
+accepted — `SdJwt::parse()` tells the two apart by the leading `{` — and every SD-JWT can be
+emitted in it:
+
+```php
+$json = SdJwt::parse($compact)->toJson();               // Flattened (Section 8.2)
+$json = SdJwt::parse($compact)->toJson(general: true);  // General (Section 8.3)
+$json = $presentation->disclose('/given_name')->toJson();
+
+$verified = $verifier->verifyPresentation($json, $issuerKey, KeyBinding::required(...));
+```
+
+A General serialization may carry several signatures; the Disclosures and `kb_jwt` belong to
+the first one, and that is the signature verified. The others are kept so that `toJson()`
+re-emits the document unchanged — `toCompact()`, which has no room for them, drops them.
+The `sd_hash` of a Key Binding JWT is always computed over the compact form rebuilt from the
+JSON parts, as Section 8.1 requires.
+
 ## Scope
 
-- Compact serialization (`<JWT>~<Disclosure>~...~[<KB-JWT>]`) — issue, present, verify.
+- Compact serialization (`<JWT>~<Disclosure>~...~[<KB-JWT>]`) and the JWS JSON
+  serialization (Section 8, Flattened and General) — issue, present, verify.
 - Object-property, array-element, and recursive Disclosures; decoy digests.
 - Key Binding JWTs: creation and full Section 7.3 validation (`typ`, algorithm-to-`cnf`
   match, `iat` window, `aud`, `nonce`, `sd_hash`).
 - `_sd_alg`: sha-256 (default), sha-384, sha-512.
 - JOSE algorithms: ES256, ES384, ES512, EdDSA, RS256 (signing); verification takes any
   k2gl/dsse `Verifier`.
-
-The JWS JSON serialization (RFC 9901 Section 8) is not implemented yet.
 
 ## Design
 
