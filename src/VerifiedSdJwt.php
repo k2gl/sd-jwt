@@ -14,9 +14,13 @@ use stdClass;
  */
 final class VerifiedSdJwt
 {
+    /**
+     * @param list<string> $disclosedPaths
+     */
     public function __construct(
         private readonly stdClass $payload,
         private readonly ?stdClass $keyBindingPayload,
+        private readonly array $disclosedPaths = [],
     ) {}
 
     /** The Processed SD-JWT Payload; JSON objects are stdClass instances. */
@@ -35,6 +39,18 @@ final class VerifiedSdJwt
     {
         /** @var array<string, mixed> */
         return (array) json_decode(Json::encode($this->payload), true);
+    }
+
+    /**
+     * JSON Pointers (into the Processed SD-JWT Payload) of every claim that
+     * arrived through a Disclosure, e.g. `/address/street_address` — lets a
+     * profile decide which claims may or may not be selectively disclosed.
+     *
+     * @return list<string>
+     */
+    public function disclosedPaths(): array
+    {
+        return $this->disclosedPaths;
     }
 
     /** The payload of the verified Key Binding JWT, when one was checked. */

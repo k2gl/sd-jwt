@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.0
+
+- JWS JSON serialization (RFC 9901 Section 8): `SdJwt::parse()` accepts the Flattened and
+  General forms next to the compact one, `SdJwt::toJson()` / `Presentation::toJson()` emit
+  them. The RFC's Section 8 examples verify end to end, Key Binding included.
+- `VerifiedSdJwt::disclosedPaths()` — the JSON Pointers of the claims that arrived through
+  Disclosures, so a profile can enforce which claims may be selectively disclosed.
+
 ## 1.0.0
 
 - Initial release: Selective Disclosure for JWTs per RFC 9901.

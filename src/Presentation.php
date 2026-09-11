@@ -147,6 +147,12 @@ final class Presentation
         return $this->toSdJwt()->toCompact();
     }
 
+    /** The presentation in the JWS JSON serialization (RFC 9901 Section 8), no Key Binding. */
+    public function toJson(): string
+    {
+        return $this->toSdJwt()->toJson();
+    }
+
     /**
      * The compact SD-JWT+KB presentation: the selected Disclosures plus a Key
      * Binding JWT (RFC 9901 Section 4.3) signed with the Holder's key.
