@@ -115,6 +115,17 @@ Use `KeyBinding::notRequired()` for presentations without Holder binding, and
 `$verifier->verify($sdJwt, $issuerKey)` on the Holder side after receiving an SD-JWT from
 an Issuer.
 
+The verified result also says which claims came through Disclosures and which array
+elements were withheld, as JSON Pointers with array positions **as issued** — the
+coordinates SD-JWT VC Type Metadata uses to say what may or must be selectively
+disclosed:
+
+```php
+$verified->claims()['nationalities'];  // ['US', 'FR'] — the middle one was not disclosed
+$verified->disclosedPaths();           // ['/nationalities/0', '/nationalities/2', '/address/street']
+$verified->undisclosedPaths();         // ['/nationalities/1'] — a decoy digest looks the same
+```
+
 ### JWS JSON serialization
 
 RFC 9901 Section 8 defines an alternative to the `~`-separated compact form: a JWS JSON
