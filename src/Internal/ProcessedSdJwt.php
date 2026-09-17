@@ -20,6 +20,8 @@ final class ProcessedSdJwt
      * @param array<string, Disclosure> $disclosureByPath JSON Pointer (into the processed payload) => Disclosure
      * @param array<string, string> $parentDigestByDigest child digest => digest of the Disclosure whose value contains it
      * @param array<string, Disclosure> $disclosureByDigest
+     * @param list<string> $disclosedPaths JSON Pointers, as issued, of the claims that arrived through a Disclosure
+     * @param list<string> $undisclosedPaths JSON Pointers, as issued, of array elements whose Disclosure was not provided
      */
     public function __construct(
         public readonly stdClass $payload,
@@ -27,5 +29,7 @@ final class ProcessedSdJwt
         public readonly array $disclosureByPath,
         public readonly array $parentDigestByDigest,
         public readonly array $disclosureByDigest,
+        public readonly array $disclosedPaths = [],
+        public readonly array $undisclosedPaths = [],
     ) {}
 }

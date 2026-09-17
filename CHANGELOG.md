@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.2.0
+
+- `VerifiedSdJwt::undisclosedPaths()` — the JSON Pointers of the array elements whose
+  Disclosure was not provided (a decoy digest is indistinguishable and listed the same
+  way). Together with `disclosedPaths()` this is what SD-JWT VC Type Metadata needs to check
+  its `sd` rules: the draft evaluates array positions against the array as issued.
+- Accordingly, array indices in `disclosedPaths()` now count the elements as issued,
+  undisclosed ones included; before, they were positions in the processed payload. Object
+  keys are unaffected, and so is `Presentation`, which still selects by processed-payload
+  pointers.
+
 ## 1.1.0
 
 - JWS JSON serialization (RFC 9901 Section 8): `SdJwt::parse()` accepts the Flattened and

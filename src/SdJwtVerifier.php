@@ -107,7 +107,8 @@ final class SdJwtVerifier
         return new VerifiedSdJwt(
             payload: $processed->payload,
             keyBindingPayload: $keyBindingPayload,
-            disclosedPaths: array_keys($processed->disclosureByPath),
+            disclosedPaths: $processed->disclosedPaths,
+            undisclosedPaths: $processed->undisclosedPaths,
         );
     }
 

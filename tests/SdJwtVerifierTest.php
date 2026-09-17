@@ -8,6 +8,9 @@ use K2gl\SdJwt\Disclosure;
 use K2gl\SdJwt\Exception\InvalidSdJwtException;
 use K2gl\SdJwt\Exception\SignatureVerificationFailed;
 use K2gl\SdJwt\Internal\Base64Url;
+use K2gl\SdJwt\Presentation;
+use K2gl\SdJwt\Sd;
+use K2gl\SdJwt\SdJwtIssuer;
 use K2gl\SdJwt\SdJwtVerifier;
 use K2gl\SdJwt\Tests\Support\SdJwtTestCase;
 use K2gl\SdJwt\VerifiedSdJwt;
@@ -198,6 +201,55 @@ final class SdJwtVerifierTest extends SdJwtTestCase
         // act + assert
         fact(fn () => (new SdJwtVerifier)->verify($jwt . '~' . $disclosure->encoded . '~', self::issuerKey()))
             ->throws(InvalidSdJwtException::class);
+    }
+
+    public function testDisclosedAndUndisclosedPathsKeepArrayPositionsAsIssued(): void
+    {
+        // arrange: three disclosable nationalities, the middle one withheld
+        $sdJwt = (new SdJwtIssuer(self::issuerSigner(), saltGenerator: self::salts()))->issue([
+            'nationalities' => [Sd::hide('US'), Sd::hide('DE'), Sd::hide('FR')],
+            'address' => Sd::hide(['street' => Sd::hide('Main St'), 'city' => 'Anytown']),
+        ]);
+        $presented = Presentation::of($sdJwt)
+            ->disclose('/nationalities/0', '/nationalities/2', '/address/street')
+            ->toCompact();
+
+        // act
+        $verified = (new SdJwtVerifier)->verify($presented, self::issuerKey());
+
+        // assert: the processed payload is compacted, the paths are not
+        fact($verified->claims()['nationalities'])->is(['US', 'FR']);
+        fact($verified->disclosedPaths())->is(['/nationalities/0', '/nationalities/2', '/address', '/address/street']);
+        fact($verified->undisclosedPaths())->is(['/nationalities/1']);
+    }
+
+    public function testADecoyInAnArrayCountsAsAnUndisclosedElement(): void
+    {
+        // arrange: a decoy sits between two plain elements
+        $sdJwt = (new SdJwtIssuer(self::issuerSigner(), saltGenerator: self::salts()))->issue([
+            'degrees' => ['BSc', Sd::decoy(), Sd::hide(['type' => 'MSc', 'year' => Sd::hide(2020)])],
+        ]);
+        $presented = Presentation::of($sdJwt)->discloseAll()->toCompact();
+
+        // act
+        $verified = (new SdJwtVerifier)->verify($presented, self::issuerKey());
+
+        // assert: the disclosed element is the third as issued, the second as processed
+        fact($verified->claims()['degrees'])->is(['BSc', ['type' => 'MSc', 'year' => 2020]]);
+        fact($verified->disclosedPaths())->is(['/degrees/2', '/degrees/2/year']);
+        fact($verified->undisclosedPaths())->is(['/degrees/1']);
+    }
+
+    public function testNothingWithheldMeansNoUndisclosedPaths(): void
+    {
+        $sdJwt = (new SdJwtIssuer(self::issuerSigner(), saltGenerator: self::salts()))->issue([
+            'nationalities' => [Sd::hide('US'), 'DE'],
+        ]);
+
+        $verified = (new SdJwtVerifier)->verify(Presentation::of($sdJwt)->discloseAll()->toCompact(), self::issuerKey());
+
+        fact($verified->disclosedPaths())->is(['/nationalities/0']);
+        fact($verified->undisclosedPaths())->is([]);
     }
 
     private function verifier(): SdJwtVerifier

@@ -30,6 +30,12 @@ final class DisclosureProcessor
     /** @var array<string, Disclosure> */
     private array $disclosureByPath = [];
 
+    /** @var list<string> */
+    private array $disclosedPaths = [];
+
+    /** @var list<string> */
+    private array $undisclosedPaths = [];
+
     /** @var array<string, string> */
     private array $parentDigestByDigest = [];
 
@@ -52,7 +58,7 @@ final class DisclosureProcessor
             $processor->disclosureByDigest[$digest] = $disclosure;
         }
 
-        $processed = $processor->processObject($payload, '', null, isRoot: true);
+        $processed = $processor->processObject($payload, '', '', null, isRoot: true);
 
         foreach ($processor->disclosureByDigest as $digest => $disclosure) {
             if (! isset($processor->used[$digest])) {
@@ -68,24 +74,32 @@ final class DisclosureProcessor
             disclosureByPath: $processor->disclosureByPath,
             parentDigestByDigest: $processor->parentDigestByDigest,
             disclosureByDigest: $processor->disclosureByDigest,
+            disclosedPaths: $processor->disclosedPaths,
+            undisclosedPaths: $processor->undisclosedPaths,
         );
     }
 
-    private function processNode(mixed $node, string $path, ?string $viaDigest): mixed
+    /**
+     * Two pointers travel with every node: `$path` into the processed payload
+     * (what a Holder selects Disclosures by) and `$issuedPath` into the payload
+     * as issued, where array elements keep their position even when the
+     * element before them was not disclosed.
+     */
+    private function processNode(mixed $node, string $path, string $issuedPath, ?string $viaDigest): mixed
     {
         if ($node instanceof stdClass) {
-            return $this->processObject($node, $path, $viaDigest, isRoot: false);
+            return $this->processObject($node, $path, $issuedPath, $viaDigest, isRoot: false);
         }
 
         if (is_array($node)) {
             // JSON-decoded arrays are always lists; array_values() just proves it.
-            return $this->processArray(array_values($node), $path, $viaDigest);
+            return $this->processArray(array_values($node), $path, $issuedPath, $viaDigest);
         }
 
         return $node;
     }
 
-    private function processObject(stdClass $object, string $path, ?string $viaDigest, bool $isRoot): stdClass
+    private function processObject(stdClass $object, string $path, string $issuedPath, ?string $viaDigest, bool $isRoot): stdClass
     {
         $result = new stdClass;
 
@@ -98,7 +112,8 @@ final class DisclosureProcessor
                 continue;
             }
 
-            $result->{$name} = $this->processNode($value, $path . '/' . self::escapePointer((string) $name), $viaDigest);
+            $segment = '/' . self::escapePointer((string) $name);
+            $result->{$name} = $this->processNode($value, $path . $segment, $issuedPath . $segment, $viaDigest);
         }
 
         $embedded = get_object_vars($object)['_sd'] ?? null;
@@ -142,9 +157,9 @@ final class DisclosureProcessor
                 );
             }
 
-            $claimPath = $path . '/' . self::escapePointer((string) $name);
-            $this->recordDisclosure($digest, $disclosure, $claimPath, $viaDigest);
-            $result->{$name} = $this->processNode($disclosure->value, $claimPath, $digest);
+            $segment = '/' . self::escapePointer((string) $name);
+            $this->recordDisclosure($digest, $disclosure, $path . $segment, $issuedPath . $segment, $viaDigest);
+            $result->{$name} = $this->processNode($disclosure->value, $path . $segment, $issuedPath . $segment, $digest);
         }
 
         return $result;
@@ -154,15 +169,16 @@ final class DisclosureProcessor
      * @param list<mixed> $elements
      * @return list<mixed>
      */
-    private function processArray(array $elements, string $path, ?string $viaDigest): array
+    private function processArray(array $elements, string $path, string $issuedPath, ?string $viaDigest): array
     {
         $result = [];
 
-        foreach ($elements as $element) {
+        foreach ($elements as $issued => $element) {
             $digest = self::arrayElementDigest($element);
+            $issuedElementPath = $issuedPath . '/' . $issued;
 
             if ($digest === null) {
-                $result[] = $this->processNode($element, $path . '/' . count($result), $viaDigest);
+                $result[] = $this->processNode($element, $path . '/' . count($result), $issuedElementPath, $viaDigest);
 
                 continue;
             }
@@ -170,7 +186,11 @@ final class DisclosureProcessor
             $disclosure = $this->takeDisclosure($digest);
 
             if ($disclosure === null) {
-                continue; // Undisclosed array elements (and decoys) are removed.
+                // Undisclosed array elements (and decoys, which look the same) are
+                // removed from the processed payload; their position is kept on record.
+                $this->undisclosedPaths[] = $issuedElementPath;
+
+                continue;
             }
 
             if (! $disclosure->isArrayElement()) {
@@ -180,8 +200,8 @@ final class DisclosureProcessor
             }
 
             $elementPath = $path . '/' . count($result);
-            $this->recordDisclosure($digest, $disclosure, $elementPath, $viaDigest);
-            $result[] = $this->processNode($disclosure->value, $elementPath, $digest);
+            $this->recordDisclosure($digest, $disclosure, $elementPath, $issuedElementPath, $viaDigest);
+            $result[] = $this->processNode($disclosure->value, $elementPath, $issuedElementPath, $digest);
         }
 
         return $result;
@@ -202,10 +222,11 @@ final class DisclosureProcessor
         return $this->disclosureByDigest[$digest] ?? null;
     }
 
-    private function recordDisclosure(string $digest, Disclosure $disclosure, string $path, ?string $viaDigest): void
+    private function recordDisclosure(string $digest, Disclosure $disclosure, string $path, string $issuedPath, ?string $viaDigest): void
     {
         $this->used[$digest] = true;
         $this->disclosureByPath[$path] = $disclosure;
+        $this->disclosedPaths[] = $issuedPath;
 
         if ($viaDigest !== null) {
             $this->parentDigestByDigest[$digest] = $viaDigest;
